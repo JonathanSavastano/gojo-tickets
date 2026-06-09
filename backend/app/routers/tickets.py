@@ -77,3 +77,12 @@ async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends
         query = f"UPDATE tickets SET {set_clause}, updated_at = NOW() WHERE id = $1 RETURNING *"
         row = await conn.fetchrow(query, ticket_id, *values)
         return dict(row)
+
+@router.delete("/tickets/{ticket_id}", status_code=204)
+async def delete_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool)):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("DELETE FROM tickets WHERE id = $1 RETURNING *", ticket_id)
+        if row:
+            return None
+        else:
+            raise HTTPException(status_code=404, detail="Ticket not found")
