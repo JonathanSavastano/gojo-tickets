@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.db import get_pool
-from app.schemas import TicketCreate
+from app.schemas import TicketCreate, TicketUpdate
 from fastapi import HTTPException
 import uuid
 
@@ -59,3 +59,21 @@ async def get_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool)):
             return dict(row)
         else:
             raise HTTPException(status_code=404, detail="Ticket not found")
+
+@router.patch("/tickets/{ticket_id}")
+async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends(get_pool)):
+    async with pool.acquire() as conn:
+        existing_ticket = await conn.fetchrow("SELECT * FROM tickets WHERE id = $1", ticket_id)
+        if not existing_ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+
+        updated_fields = {k: v for k, v in ticket.dict(exclude_unset=True).items()} # pull out only the fields that were provided in the update request
+        if not updated_fields:
+            raise HTTPException(status_code=400, detail="No fields provided for update")
+
+        set_clause = ", ".join([f"{key} = ${i+2}" for i, key in enumerate(updated_fields.keys())]) # build the SET clause of the SQL query dynamically based on which fields were provided
+        values = list(updated_fields.values())
+
+        query = f"UPDATE tickets SET {set_clause}, updated_at = NOW() WHERE id = $1 RETURNING *"
+        row = await conn.fetchrow(query, ticket_id, *values)
+        return dict(row)
