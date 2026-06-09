@@ -42,3 +42,6 @@ copy project UUID that comes back
 -- 3. Now insert the ticket with real foreign keys
 INSERT INTO tickets (sequence_number, key, title, status, priority, type, project_id, reporter_id)
 VALUES (1, 'TEST-1', 'My first ticket', 'open', 'medium', 'task', '<your-project-uuid>', '<your-user-uuid>');
+
+Query database to see tickets:
+SELECT id, key, title FROM tickets;

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends
 from app.db import get_pool
 from app.schemas import TicketCreate
+from fastapi import HTTPException
+import uuid
 
 router = APIRouter()
 
@@ -48,3 +50,12 @@ async def get_tickets(pool=Depends(get_pool)):
     async with pool.acquire() as conn:
         rows = await conn.fetch("SELECT * FROM tickets")
         return [dict(row) for row in rows]
+
+@router.get("/tickets/{ticket_id}")
+async def get_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool)):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM tickets WHERE id = $1", ticket_id)
+        if row:
+            return dict(row)
+        else:
+            raise HTTPException(status_code=404, detail="Ticket not found")
