@@ -38,3 +38,20 @@ class TicketUpdate(BaseModel):
     priority: Optional[TicketPriority] = None
     type: Optional[TicketType] = None
     assignee_id: Optional[uuid.UUID] = None
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    display_name: str 
+
+class UserUpdate(BaseModel):
+    email: Optional[str] = None
+    password: Optional[str] = None
+    display_name: Optional[str] = None
+
+class UserResponse(BaseModel):
+    id: uuid.UUID
+    email: str
+    display_name: str 
+    created_at: str
+    updated_at: str
