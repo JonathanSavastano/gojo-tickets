@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional
 import uuid
 from enum import Enum
+from datetime import datetime
 
 class TicketStatus(str, Enum):
     open = "open"
@@ -53,5 +54,5 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     display_name: str 
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
