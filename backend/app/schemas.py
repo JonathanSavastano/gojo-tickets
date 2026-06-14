@@ -56,3 +56,12 @@ class UserResponse(BaseModel):
     display_name: str 
     created_at: datetime
     updated_at: datetime
+
+class ProjectCreate(BaseModel):
+    name: str
+    owner_id: uuid.UUID
+    key: str
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    owner_id: Optional[uuid.UUID] = None 
