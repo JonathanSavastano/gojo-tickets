@@ -3,11 +3,12 @@ from app.db import get_pool
 from app.schemas import TicketCreate, TicketUpdate
 from fastapi import HTTPException
 import uuid
+from app.security import get_current_user
 
 router = APIRouter()
 
 @router.post("/tickets")
-async def create_ticket(ticket: TicketCreate, pool=Depends(get_pool)):
+async def create_ticket(ticket: TicketCreate, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
         p_key = await conn.fetchrow(
             """
@@ -38,7 +39,7 @@ async def create_ticket(ticket: TicketCreate, pool=Depends(get_pool)):
             ticket.priority,
             ticket.type,
             ticket.project_id,
-            ticket.reporter_id,
+            current_user["id"],
             ticket.assignee_id,
             sequence_number,
             ticket_string

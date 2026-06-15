@@ -29,7 +29,6 @@ class TicketCreate(BaseModel):
     priority: TicketPriority
     type: TicketType
     project_id: uuid.UUID
-    reporter_id: uuid.UUID
     assignee_id: Optional[uuid.UUID] = None
 
 class TicketUpdate(BaseModel):
