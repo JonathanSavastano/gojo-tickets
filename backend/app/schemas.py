@@ -65,3 +65,7 @@ class ProjectCreate(BaseModel):
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     owner_id: Optional[uuid.UUID] = None 
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
