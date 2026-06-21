@@ -7,6 +7,8 @@ from app.security import get_current_user
 
 router = APIRouter()
 
+
+# POST /tickets - Create a new ticket
 @router.post("/tickets")
 async def create_ticket(ticket: TicketCreate, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
@@ -46,12 +48,16 @@ async def create_ticket(ticket: TicketCreate, pool=Depends(get_pool), current_us
         )
         return dict(row)
 
+
+# GET /tickets - Get a list of all tickets
 @router.get("/tickets")
 async def get_tickets(pool=Depends(get_pool)):
     async with pool.acquire() as conn:
         rows = await conn.fetch("SELECT * FROM tickets")
         return [dict(row) for row in rows]
 
+
+# GET /tickets/{ticket_id} - Get a specific ticket by ID
 @router.get("/tickets/{ticket_id}")
 async def get_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool)):
     async with pool.acquire() as conn:
@@ -61,8 +67,10 @@ async def get_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool)):
         else:
             raise HTTPException(status_code=404, detail="Ticket not found")
 
+
+# PATCH /tickets/{ticket_id} - Update a specific ticket by ID
 @router.patch("/tickets/{ticket_id}")
-async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends(get_pool)):
+async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
         existing_ticket = await conn.fetchrow("SELECT * FROM tickets WHERE id = $1", ticket_id)
         if not existing_ticket:
@@ -79,8 +87,10 @@ async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends
         row = await conn.fetchrow(query, ticket_id, *values)
         return dict(row)
 
+
+# DELETE /tickets/{ticket_id} - Delete a specific ticket by ID
 @router.delete("/tickets/{ticket_id}", status_code=204)
-async def delete_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool)):
+async def delete_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
         row = await conn.fetchrow("DELETE FROM tickets WHERE id = $1 RETURNING *", ticket_id)
         if row:

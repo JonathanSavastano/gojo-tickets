@@ -7,8 +7,10 @@ from asyncpg import UniqueViolationError, ForeignKeyViolationError
 
 router = APIRouter()
 
+
+# POST /projects - Create a new project
 @router.post("/projects")
-async def create_project(project: ProjectCreate, pool = Depends(get_pool)):
+async def create_project(project: ProjectCreate, pool = Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
         try:
             row = await conn.fetchrow(
@@ -18,13 +20,15 @@ async def create_project(project: ProjectCreate, pool = Depends(get_pool)):
                 RETURNING *
                 """,
                 project.name,
-                project.owner_id,
+                current_user["id"],
                 project.key
             )
             return dict(row)
         except UniqueViolationError:
             raise HTTPException(status_code=409, detail="Project key must be unique")
 
+
+# GET /projects/{project_id} - Get a specific project by ID
 @router.get("/projects/{project_id}")
 async def get_project(project_id: uuid.UUID, pool = Depends(get_pool)):
     async with pool.acquire() as conn:
@@ -38,6 +42,8 @@ async def get_project(project_id: uuid.UUID, pool = Depends(get_pool)):
             raise HTTPException(status_code=404, detail="Project not found")
         return dict(row)
 
+
+# GET /projects - Get a list of all projects
 @router.get("/projects")
 async def get_projects(pool = Depends(get_pool)):
     async with pool.acquire() as conn:
@@ -48,8 +54,10 @@ async def get_projects(pool = Depends(get_pool)):
         )
         return [dict(row) for row in rows]
 
+
+# PATCH /projects/{project_id} - Update a specific project by ID
 @router.patch("/projects/{project_id}")
-async def update_project(project_id: uuid.UUID, project: ProjectUpdate, pool = Depends(get_pool)):
+async def update_project(project_id: uuid.UUID, project: ProjectUpdate, pool = Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
@@ -67,8 +75,10 @@ async def update_project(project_id: uuid.UUID, project: ProjectUpdate, pool = D
             raise HTTPException(status_code=404, detail="Project not found")
         return dict(row)
 
+
+# DELETE /projects/{project_id} - Delete a specific project by ID
 @router.delete("/projects/{project_id}", status_code=204)
-async def delete_project(project_id: uuid.UUID, pool = Depends(get_pool)):
+async def delete_project(project_id: uuid.UUID, pool = Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
         try:
             row = await conn.fetchrow(

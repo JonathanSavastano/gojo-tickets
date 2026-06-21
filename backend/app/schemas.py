@@ -58,7 +58,6 @@ class UserResponse(BaseModel):
 
 class ProjectCreate(BaseModel):
     name: str
-    owner_id: uuid.UUID
     key: str
 
 class ProjectUpdate(BaseModel):
