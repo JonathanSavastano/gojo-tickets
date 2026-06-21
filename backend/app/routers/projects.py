@@ -4,6 +4,7 @@ from app.db import get_pool
 from app import security
 from app.schemas import ProjectCreate, ProjectUpdate
 from asyncpg import UniqueViolationError, ForeignKeyViolationError
+from app.security import get_current_user
 
 router = APIRouter()
 
