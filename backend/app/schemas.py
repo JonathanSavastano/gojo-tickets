@@ -23,6 +23,11 @@ class TicketType(str, Enum):
     story = "story"
     improvement = "improvement"
 
+class UserRole(str, Enum):
+    admin = "admin"
+    member = "member"
+    viewer = "viewer"
+
 class TicketCreate(BaseModel):
     title: str
     description: Optional[str] = None
@@ -53,6 +58,7 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     display_name: str 
+    role: UserRole
     created_at: datetime
     updated_at: datetime
 
