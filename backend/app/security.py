@@ -54,3 +54,20 @@ async def get_current_user(token: str = Depends(oauth2_scheme), pool = Depends(g
         if not row:
             raise credentials_exception
         return dict(row)
+
+async def require_admin(current_user: dict = Depends(get_current_user)):
+    # check role column in users table
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to perform this action",
+        )
+    return current_user
+
+async def is_project_member(conn, project_id, user_id) -> bool:
+    row = await conn.fetchrow(
+        "SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2",
+        project_id,
+        user_id
+    )
+    return row is not None
