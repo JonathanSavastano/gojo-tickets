@@ -73,3 +73,6 @@ class ProjectUpdate(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class ProjectMemberCreate(BaseModel):
+    user_id: uuid.UUID

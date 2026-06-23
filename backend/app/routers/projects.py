@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 import uuid
 from app.db import get_pool
 from app import security
-from app.schemas import ProjectCreate, ProjectUpdate
+from app.schemas import ProjectCreate, ProjectUpdate, ProjectMemberCreate
 from asyncpg import UniqueViolationError, ForeignKeyViolationError
 from app.security import get_current_user, is_project_member, require_admin
 
@@ -99,3 +99,27 @@ async def delete_project(project_id: uuid.UUID, pool = Depends(get_pool), curren
 
             if not row:
                 raise HTTPException(status_code=404, detail="Project not found")
+
+
+# add a user to a project 
+@router.post("/projects/{project_id}/members")
+async def add_project_member(project_id: uuid.UUID, member: ProjectMemberCreate, pool = Depends(get_pool), current_user=Depends(get_current_user)):
+    async with pool.acquire() as conn:
+        # check if user is admin 
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="You do not have permission to add members to this project") 
+        try:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO project_members (project_id, user_id)
+                VALUES ($1, $2)
+                RETURNING *
+                """,
+                project_id,
+                member.user_id
+            )
+            return dict(row)
+        except UniqueViolationError:
+            raise HTTPException(status_code=409, detail="User is already a member of this project")
+        except ForeignKeyViolationError:
+            raise HTTPException(status_code=404, detail="Project or user not found")
