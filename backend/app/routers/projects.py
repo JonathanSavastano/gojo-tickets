@@ -4,7 +4,7 @@ from app.db import get_pool
 from app import security
 from app.schemas import ProjectCreate, ProjectUpdate
 from asyncpg import UniqueViolationError, ForeignKeyViolationError
-from app.security import get_current_user
+from app.security import get_current_user, is_project_member, require_admin
 
 router = APIRouter()
 
@@ -80,16 +80,22 @@ async def update_project(project_id: uuid.UUID, project: ProjectUpdate, pool = D
 # DELETE /projects/{project_id} - Delete a specific project by ID
 @router.delete("/projects/{project_id}", status_code=204)
 async def delete_project(project_id: uuid.UUID, pool = Depends(get_pool), current_user=Depends(get_current_user)):
-    async with pool.acquire() as conn:
-        try:
-            row = await conn.fetchrow(
-                """
-                DELETE FROM projects WHERE id = $1 RETURNING *
-                """,
-                project_id
-            )
-        except ForeignKeyViolationError:
-            raise HTTPException(status_code=409, detail="Cannot delete project with existing tickets")
+        async with pool.acquire() as conn:
+            # check if user is admin 
+            if current_user.get("role") != "admin":
+                # check if user is a member of the project
+                is_member = await is_project_member(conn, project_id, current_user["id"])
+                if not is_member:
+                    raise HTTPException(status_code=403, detail="You do not have permission to delete this project") 
+            try:
+                row = await conn.fetchrow(
+                    """
+                    DELETE FROM projects WHERE id = $1 RETURNING *
+                    """,
+                    project_id
+                )
+            except ForeignKeyViolationError:
+                raise HTTPException(status_code=409, detail="Cannot delete project with existing tickets")
 
-        if not row:
-            raise HTTPException(status_code=404, detail="Project not found")
+            if not row:
+                raise HTTPException(status_code=404, detail="Project not found")
