@@ -123,3 +123,34 @@ async def add_project_member(project_id: uuid.UUID, member: ProjectMemberCreate,
             raise HTTPException(status_code=409, detail="User is already a member of this project")
         except ForeignKeyViolationError:
             raise HTTPException(status_code=404, detail="Project or user not found")
+
+        
+# get project members
+@router.get("/projects/{project_id}/members")
+async def get_project_members(project_id: uuid.UUID, pool = Depends(get_pool), current_user=Depends(get_current_user)):
+    async with pool.acquire() as conn:
+        # check if project exists
+        project_row = await conn.fetchrow(
+            """
+            SELECT * FROM projects WHERE id = $1
+            """,
+            project_id
+        )
+        if not project_row:
+            raise HTTPException(status_code=404, detail="Project not found")
+        # check if user is admin 
+        if current_user.get("role") != "admin":
+            # check if user is a member of the project
+            is_member = await is_project_member(conn, project_id, current_user["id"])
+            if not is_member:
+                raise HTTPException(status_code=403, detail="You do not have permission to view members of this project") 
+        rows = await conn.fetch(
+            """
+            SELECT u.id, u.email, u.display_name, u.role
+            FROM project_members pm
+            JOIN users u ON pm.user_id = u.id
+            WHERE pm.project_id = $1
+            """,
+            project_id
+        )
+        return [dict(row) for row in rows]
