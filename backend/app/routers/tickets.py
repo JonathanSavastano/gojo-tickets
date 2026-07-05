@@ -3,7 +3,7 @@ from app.db import get_pool
 from app.schemas import TicketCreate, TicketUpdate
 from fastapi import HTTPException
 import uuid
-from app.security import get_current_user
+from app.security import get_current_user, is_project_member
 
 router = APIRouter()
 
