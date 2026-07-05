@@ -56,10 +56,26 @@ async def get_projects(pool = Depends(get_pool)):
         return [dict(row) for row in rows]
 
 
-# PATCH /projects/{project_id} - Update a specific project by ID
+# PATCH /projects/{project_id} - Update a specific project by ID if you are a project member or an admin
 @router.patch("/projects/{project_id}")
 async def update_project(project_id: uuid.UUID, project: ProjectUpdate, pool = Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
+        # check project exists
+        project_row = await conn.fetchrow(
+            """
+            SELECT * FROM projects WHERE id = $1
+            """,
+            project_id
+        )
+        if not project_row:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # check if user is admin
+        if current_user.get("role") != "admin":
+            # check if user is a member of the project
+            is_member = await is_project_member(conn, project_id, current_user["id"])
+            if not is_member:
+                raise HTTPException(status_code=403, detail="You do not have permission to update this project")
         row = await conn.fetchrow(
             """
             UPDATE projects
@@ -72,8 +88,6 @@ async def update_project(project_id: uuid.UUID, project: ProjectUpdate, pool = D
             project.owner_id,
             project_id
         )
-        if not row:
-            raise HTTPException(status_code=404, detail="Project not found")
         return dict(row)
 
 
