@@ -68,7 +68,7 @@ async def get_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool)):
             raise HTTPException(status_code=404, detail="Ticket not found")
 
 
-# PATCH /tickets/{ticket_id} - Update a specific ticket by ID
+# PATCH /tickets/{ticket_id} - Update a specific ticket by ID if the current user is a member of the project, an admin, or the reporter of the ticket
 @router.patch("/tickets/{ticket_id}")
 async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
@@ -76,11 +76,19 @@ async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends
         if not existing_ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
 
-        updated_fields = {k: v for k, v in ticket.dict(exclude_unset=True).items()} # pull out only the fields that were provided in the update request
+        # check if user is admin or reporter of the ticket
+        if current_user.get("role") != "admin" and existing_ticket["reporter_id"] != current_user["id"]:
+            # check if user is a member of the project
+            is_member = await is_project_member(conn, existing_ticket["project_id"], current_user["id"])
+            if not is_member:
+                raise HTTPException(status_code=403, detail="Not authorized to update this ticket")
+
+        # build dynamic update
+        updated_fields = {k: v for k, v in ticket.dict(exclude_unset=True).items()}
         if not updated_fields:
             raise HTTPException(status_code=400, detail="No fields provided for update")
 
-        set_clause = ", ".join([f"{key} = ${i+2}" for i, key in enumerate(updated_fields.keys())]) # build the SET clause of the SQL query dynamically based on which fields were provided
+        set_clause = ", ".join([f"{key} = ${i+2}" for i, key in enumerate(updated_fields.keys())])
         values = list(updated_fields.values())
 
         query = f"UPDATE tickets SET {set_clause}, updated_at = NOW() WHERE id = $1 RETURNING *"
@@ -88,12 +96,19 @@ async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends
         return dict(row)
 
 
-# DELETE /tickets/{ticket_id} - Delete a specific ticket by ID
+
+# DELETE /tickets/{ticket_id} - Delete a specific ticket by ID if the current user is a member of the project or an admin
 @router.delete("/tickets/{ticket_id}", status_code=204)
 async def delete_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("DELETE FROM tickets WHERE id = $1 RETURNING *", ticket_id)
-        if row:
-            return None
-        else:
+        ticket = await conn.fetchrow("SELECT project_id FROM tickets WHERE id = $1", ticket_id)
+        if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
+        # check if user is admin 
+        if current_user.get("role") != "admin":
+            # check if user is a member of the project
+            is_member = await is_project_member(conn, ticket["project_id"], current_user["id"])
+            if not is_member:
+                raise HTTPException(status_code=403, detail="Not authorized to delete this ticket")
+
+        await conn.execute("DELETE FROM tickets WHERE id = $1", ticket_id)
