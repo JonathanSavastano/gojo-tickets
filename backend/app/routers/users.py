@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 import uuid
 from app.db import get_pool
 from app import security
-from app.schemas import UserCreate, UserUpdate, UserResponse
+from app.schemas import UserCreate, UserUpdate, UserResponse, UserRoleUpdate
 from asyncpg import UniqueViolationError
 from app.security import get_current_user
 
@@ -92,3 +92,28 @@ async def delete_user(user_id: uuid.UUID, pool=Depends(get_pool), current_user=D
             return None
         else:
             raise HTTPException(status_code=404, detail="User not found")
+
+
+# Change role of a user
+@router.patch("/users/{user_id}/role")
+async def change_user_role(user_id: uuid.UUID, role_update: UserRoleUpdate, pool=Depends(get_pool), current_user=Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can change user roles")
+
+    if user_id == current_user.get("id"):
+        raise HTTPException(status_code=400, detail="Users cannot change their own role")
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE users
+            SET role = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING *
+            """,
+            role_update.role,
+            user_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        return UserResponse(**dict(row))

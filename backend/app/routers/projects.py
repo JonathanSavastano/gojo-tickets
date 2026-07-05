@@ -154,3 +154,21 @@ async def get_project_members(project_id: uuid.UUID, pool = Depends(get_pool), c
             project_id
         )
         return [dict(row) for row in rows]
+
+
+# delete member from project
+@router.delete("/projects/{project_id}/members/{user_id}", status_code=204)
+async def delete_project_member(project_id: uuid.UUID, user_id: uuid.UUID, pool = Depends(get_pool), current_user=Depends(get_current_user)):
+    async with pool.acquire() as conn:
+        # check if user is admin 
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="You do not have permission to remove members from this project") 
+        row = await conn.fetchrow(
+            """
+            DELETE FROM project_members WHERE project_id = $1 AND user_id = $2 RETURNING *
+            """,
+            project_id,
+            user_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Project member not found")

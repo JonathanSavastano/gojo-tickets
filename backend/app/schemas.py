@@ -76,3 +76,6 @@ class LoginRequest(BaseModel):
 
 class ProjectMemberCreate(BaseModel):
     user_id: uuid.UUID
+
+class UserRoleUpdate(BaseModel):
+    role: UserRole
