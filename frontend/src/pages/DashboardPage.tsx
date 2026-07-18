@@ -1,9 +1,11 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import * as api from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import type { Project } from '../types';
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -33,6 +35,16 @@ export default function DashboardPage() {
       setError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDelete = async (project: Project) => {
+    if (!confirm(`Delete project "${project.name}"?`)) return;
+    try {
+      await api.deleteProject(project.id);
+      setProjects((prev) => prev.filter((p) => p.id !== project.id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete project');
     }
   };
 
@@ -95,14 +107,23 @@ export default function DashboardPage() {
       ) : (
         <div className="project-grid">
           {projects.map((project) => (
-            <Link
-              to={`/projects/${project.id}`}
-              key={project.id}
-              className="project-card"
-            >
-              <div className="project-card-key">{project.key}</div>
-              <div className="project-card-name">{project.name}</div>
-            </Link>
+            <div key={project.id} className="project-card-wrapper">
+              <Link
+                to={`/projects/${project.id}`}
+                className="project-card"
+              >
+                <div className="project-card-key">{project.key}</div>
+                <div className="project-card-name">{project.name}</div>
+              </Link>
+              {user?.role === 'admin' && (
+                <button
+                  className="btn btn-danger btn-sm project-delete-btn"
+                  onClick={() => handleDelete(project)}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}

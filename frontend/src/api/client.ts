@@ -76,6 +76,17 @@ export async function getUsers() {
   return request<import('../types').User[]>('/users');
 }
 
+export async function deleteUser(id: string) {
+  return request<undefined>(`/users/${id}`, { method: 'DELETE' });
+}
+
+export async function updateUserRole(id: string, role: import('../types').UserRole) {
+  return request<import('../types').User>(`/users/${id}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+}
+
 // Projects
 export async function getProjects() {
   return request<import('../types').Project[]>('/projects');

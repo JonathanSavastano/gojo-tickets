@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api/client';
-import type { Project, Ticket, TicketStatus } from '../types';
+import { useAuth } from '../context/AuthContext';
+import type { Project, Ticket, TicketStatus, User, ProjectMember } from '../types';
 import { STATUS_LABELS } from '../types';
 import TicketCard from '../components/TicketCard';
 import TicketForm from '../components/TicketForm';
@@ -19,11 +20,16 @@ const BOARD_COLUMNS: TicketStatus[] = [
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewMode>('board');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [showMembers, setShowMembers] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -44,6 +50,48 @@ export default function ProjectPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const loadMembers = useCallback(async () => {
+    if (!id) return;
+    try {
+      const [membersData, usersData] = await Promise.all([
+        api.getProjectMembers(id),
+        api.getUsers(),
+      ]);
+      setMembers(membersData);
+      setAllUsers(usersData);
+    } catch {
+      // ignore
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (showMembers && id) {
+      loadMembers();
+    }
+  }, [showMembers, id, loadMembers]);
+
+  const handleAddMember = async () => {
+    if (!selectedUserId || !id) return;
+    try {
+      await api.addProjectMember(id, selectedUserId);
+      setSelectedUserId('');
+      await loadMembers();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to add member');
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!id) return;
+    if (!confirm('Remove this member?')) return;
+    try {
+      await api.removeProjectMember(id, userId);
+      await loadMembers();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to remove member');
+    }
+  };
 
   const handleCreateTicket = async (data: Record<string, unknown>) => {
     await api.createTicket({
@@ -103,6 +151,63 @@ export default function ProjectPage() {
             onSubmit={handleCreateTicket}
             onCancel={() => setShowCreateForm(false)}
           />
+        </div>
+      )}
+
+      {user?.role === 'admin' && (
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div
+            className="members-header"
+            onClick={() => setShowMembers(!showMembers)}
+          >
+            <h3>Members</h3>
+            <span className="text-muted">{showMembers ? '▲' : '▼'}</span>
+          </div>
+          {showMembers && (
+            <div className="members-panel">
+              <div className="members-add">
+                <select
+                  className="form-input"
+                  value={selectedUserId}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
+                >
+                  <option value="">Select a user...</option>
+                  {allUsers
+                    .filter((u) => !members.some((m) => m.id === u.id))
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.display_name} ({u.email})
+                      </option>
+                    ))}
+                </select>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleAddMember}
+                  disabled={!selectedUserId}
+                >
+                  Add
+                </button>
+              </div>
+              {members.length === 0 ? (
+                <p className="text-muted">No members yet.</p>
+              ) : (
+                <div className="members-list">
+                  {members.map((m) => (
+                    <div key={m.id} className="member-row">
+                      <span className="member-name">{m.display_name}</span>
+                      <span className="member-email">{m.email}</span>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleRemoveMember(m.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
