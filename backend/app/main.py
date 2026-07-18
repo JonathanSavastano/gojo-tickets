@@ -1,6 +1,7 @@
 # entry point — where to create the FastAPI app instance and register routers.
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.db import create_pool
 from app.routers import tickets, users, projects, auth
 
@@ -11,6 +12,14 @@ async def lifespan(app: FastAPI):
     await app.state.db_pool.close() # runs at shutdown, closes the connection pool to clean up resources
     
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(tickets.router) # register the tickets router to handle /tickets endpoints
 app.include_router(users.router) # register the users router to handle /users endpoints
