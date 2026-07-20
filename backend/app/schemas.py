@@ -47,18 +47,36 @@ class TicketUpdate(BaseModel):
 class UserCreate(BaseModel):
     email: str
     password: str
-    display_name: str 
+    display_name: str
+    role: Optional[UserRole] = None
 
 class UserUpdate(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
     display_name: Optional[str] = None
 
+class OrganizationCreate(BaseModel):
+    name: str
+    key: str
+
+class OrganizationJoin(BaseModel):
+    invite_code: str
+
+class OrganizationResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    key: str
+    invite_code: str
+    owner_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
 class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     display_name: str 
     role: UserRole
+    org_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
 

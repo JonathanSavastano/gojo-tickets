@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import create_pool
-from app.routers import tickets, users, projects, auth
+from app.routers import tickets, users, projects, auth, organizations
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,6 +25,7 @@ app.include_router(tickets.router) # register the tickets router to handle /tick
 app.include_router(users.router) # register the users router to handle /users endpoints
 app.include_router(projects.router) # register the projects router to handle /projects endpoints
 app.include_router(auth.router) # register the auth router to handle /auth endpoints
+app.include_router(organizations.router) # register the organizations router to handle /organizations endpoints
 
 @app.get("/")
 def root():

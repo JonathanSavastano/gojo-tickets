@@ -75,6 +75,20 @@ a:hover {
   text-decoration: none;
 }
 
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-org-name {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
 .navbar-right {
   display: flex;
   align-items: center;
@@ -531,6 +545,38 @@ select.form-input {
 .ticket-description {
   color: var(--text-muted);
   white-space: pre-wrap;
+}
+
+/* Invite code card */
+.invite-card {
+  margin-bottom: 24px;
+}
+
+.invite-header h3 {
+  margin-bottom: 4px;
+}
+
+.invite-header p {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.invite-code-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.invite-code {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+  color: var(--accent);
+  letter-spacing: 1px;
+  padding: 8px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 .detail-field {

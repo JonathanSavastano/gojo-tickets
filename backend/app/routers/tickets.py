@@ -11,14 +11,17 @@ router = APIRouter()
 # POST /tickets - Create a new ticket
 @router.post("/tickets")
 async def create_ticket(ticket: TicketCreate, pool=Depends(get_pool), current_user=Depends(get_current_user)):
+    if not current_user.get("org_id"):
+        raise HTTPException(status_code=400, detail="You must be in an organization to create tickets")
     async with pool.acquire() as conn:
-        p_key = await conn.fetchrow(
-            """
-            SELECT key FROM projects WHERE id = $1
-
-            """,
-            ticket.project_id
+        # verify project belongs to user's org
+        project = await conn.fetchrow(
+            "SELECT key FROM projects WHERE id = $1 AND org_id = $2",
+            ticket.project_id,
+            current_user["org_id"],
         )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
 
         p_id = await conn.fetchrow(
             """
@@ -27,8 +30,7 @@ async def create_ticket(ticket: TicketCreate, pool=Depends(get_pool), current_us
             ticket.project_id
         )
         sequence_number = p_id[0] + 1
-
-        ticket_string = f"{p_key[0]}-{sequence_number}"
+        ticket_string = f"{project[0]}-{sequence_number}"
 
         row = await conn.fetchrow(
             """
@@ -49,30 +51,55 @@ async def create_ticket(ticket: TicketCreate, pool=Depends(get_pool), current_us
         return dict(row)
 
 
-# GET /tickets - Get a list of all tickets
+# GET /tickets - Get a list of all tickets for current user's org
 @router.get("/tickets")
-async def get_tickets(pool=Depends(get_pool)):
+async def get_tickets(pool=Depends(get_pool), current_user=Depends(get_current_user)):
+    if not current_user.get("org_id"):
+        return []
     async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT * FROM tickets")
+        rows = await conn.fetch(
+            """
+            SELECT t.* FROM tickets t
+            JOIN projects p ON t.project_id = p.id
+            WHERE p.org_id = $1
+            """,
+            current_user["org_id"],
+        )
         return [dict(row) for row in rows]
 
 
 # GET /tickets/{ticket_id} - Get a specific ticket by ID
 @router.get("/tickets/{ticket_id}")
-async def get_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool)):
+async def get_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT * FROM tickets WHERE id = $1", ticket_id)
+        row = await conn.fetchrow(
+            """
+            SELECT t.* FROM tickets t
+            JOIN projects p ON t.project_id = p.id
+            WHERE t.id = $1 AND p.org_id = $2
+            """,
+            ticket_id,
+            current_user["org_id"],
+        )
         if row:
             return dict(row)
         else:
             raise HTTPException(status_code=404, detail="Ticket not found")
 
 
-# PATCH /tickets/{ticket_id} - Update a specific ticket by ID if the current user is a member of the project, an admin, or the reporter of the ticket
+# PATCH /tickets/{ticket_id} - Update a specific ticket by ID
 @router.patch("/tickets/{ticket_id}")
 async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
-        existing_ticket = await conn.fetchrow("SELECT * FROM tickets WHERE id = $1", ticket_id)
+        existing_ticket = await conn.fetchrow(
+            """
+            SELECT t.* FROM tickets t
+            JOIN projects p ON t.project_id = p.id
+            WHERE t.id = $1 AND p.org_id = $2
+            """,
+            ticket_id,
+            current_user["org_id"],
+        )
         if not existing_ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
 
@@ -97,11 +124,19 @@ async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends
 
 
 
-# DELETE /tickets/{ticket_id} - Delete a specific ticket by ID if the current user is a member of the project or an admin
+# DELETE /tickets/{ticket_id} - Delete a specific ticket by ID
 @router.delete("/tickets/{ticket_id}", status_code=204)
 async def delete_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
-        ticket = await conn.fetchrow("SELECT project_id FROM tickets WHERE id = $1", ticket_id)
+        ticket = await conn.fetchrow(
+            """
+            SELECT t.project_id FROM tickets t
+            JOIN projects p ON t.project_id = p.id
+            WHERE t.id = $1 AND p.org_id = $2
+            """,
+            ticket_id,
+            current_user["org_id"],
+        )
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
         # check if user is admin 

@@ -7,12 +7,22 @@ import DashboardPage from './pages/DashboardPage';
 import ProjectPage from './pages/ProjectPage';
 import TicketDetailPage from './pages/TicketDetailPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import CreateOrgPage from './pages/CreateOrgPage';
+import JoinOrgPage from './pages/JoinOrgPage';
 import type { ReactNode } from 'react';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <p className="text-muted">Loading...</p>;
   if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function OrgRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <p className="text-muted">Loading...</p>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.org_id) return <Navigate to="/org/create" replace />;
   return <>{children}</>;
 }
 
@@ -43,35 +53,51 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/"
+        path="/org/create"
         element={
           <ProtectedRoute>
-            <DashboardPage />
+            <CreateOrgPage />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/org/join"
+        element={
+          <ProtectedRoute>
+            <JoinOrgPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/"
+        element={
+          <OrgRoute>
+            <DashboardPage />
+          </OrgRoute>
         }
       />
       <Route
         path="/projects/:id"
         element={
-          <ProtectedRoute>
+          <OrgRoute>
             <ProjectPage />
-          </ProtectedRoute>
+          </OrgRoute>
         }
       />
       <Route
         path="/tickets/:id"
         element={
-          <ProtectedRoute>
+          <OrgRoute>
             <TicketDetailPage />
-          </ProtectedRoute>
+          </OrgRoute>
         }
       />
       <Route
         path="/admin/users"
         element={
-          <ProtectedRoute>
+          <OrgRoute>
             <AdminUsersPage />
-          </ProtectedRoute>
+          </OrgRoute>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />

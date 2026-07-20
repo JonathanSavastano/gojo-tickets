@@ -11,32 +11,49 @@ router = APIRouter()
 
 # POST /users - Create a new user
 @router.post("/users")
-async def create_user(user: UserCreate, pool=Depends(get_pool)):
+async def create_user(user: UserCreate, pool=Depends(get_pool), current_user=Depends(get_current_user)):
 
     hashed_password = security.hash_password(user.password)
+
+    # Determine role: only admins can set admin role
+    role = user.role
+    if role is None:
+        role = "member"
+    if role == "admin" and current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can create admin users")
+
+    # New users are added to the creator's org if the creator is in one
+    org_id = current_user.get("org_id")
 
     async with pool.acquire() as conn:
         try:
             row = await conn.fetchrow(
                 """
-                INSERT INTO users (display_name, email, password_hash)
-                VALUES ($1, $2, $3)
+                INSERT INTO users (display_name, email, password_hash, role, org_id)
+                VALUES ($1, $2, $3, $4, $5)
                 RETURNING *
                 """,
                 user.display_name,
                 user.email,
-                hashed_password
+                hashed_password,
+                role,
+                org_id,
             )
         except UniqueViolationError:
             raise HTTPException(status_code=409, detail="User with this email already exists")
     return UserResponse(**dict(row))  
 
 
-# GET /users - Get a list of all users
+# GET /users - Get a list of all users in current user's org
 @router.get("/users")
-async def get_users(pool=Depends(get_pool)):
+async def get_users(pool=Depends(get_pool), current_user=Depends(get_current_user)):
+    if not current_user.get("org_id"):
+        return []
     async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT * FROM users")
+        rows = await conn.fetch(
+            "SELECT * FROM users WHERE org_id = $1",
+            current_user["org_id"],
+        )
         return [UserResponse(**dict(row)) for row in rows]
 
 
@@ -46,11 +63,15 @@ async def get_me(current_user=Depends(get_current_user)):
     return UserResponse(**current_user)
 
 
-# GET /users/{user_id} - Get a specific user by ID
+# GET /users/{user_id} - Get a specific user by ID (must be in same org)
 @router.get("/users/{user_id}")
-async def get_user(user_id: uuid.UUID, pool=Depends(get_pool)):
+async def get_user(user_id: uuid.UUID, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+        row = await conn.fetchrow(
+            "SELECT * FROM users WHERE id = $1 AND org_id = $2",
+            user_id,
+            current_user.get("org_id"),
+        )
         if row:
             return UserResponse(**dict(row))
         else:
@@ -64,6 +85,12 @@ async def update_user(user_id: uuid.UUID, user: UserUpdate, pool=Depends(get_poo
         existing_user = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
         if not existing_user:
             raise HTTPException(status_code=404, detail="User not found")
+
+        # users can only update themselves, admins can update anyone in their org
+        if current_user["id"] != user_id and current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to update this user")
+        if current_user.get("org_id") and existing_user["org_id"] != current_user["org_id"]:
+            raise HTTPException(status_code=403, detail="Not authorized to update this user")
 
         update_data = user.dict(exclude_unset=True)
         if not update_data:
@@ -87,6 +114,11 @@ async def update_user(user_id: uuid.UUID, user: UserUpdate, pool=Depends(get_poo
 @router.delete("/users/{user_id}", status_code=204)
 async def delete_user(user_id: uuid.UUID, pool=Depends(get_pool), current_user=Depends(get_current_user)):
     async with pool.acquire() as conn:
+        existing_user = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+        if not existing_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if current_user.get("org_id") and existing_user["org_id"] != current_user["org_id"]:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this user")
         row = await conn.fetchrow("DELETE FROM users WHERE id = $1 RETURNING *", user_id)
         if row:
             return None
@@ -104,6 +136,12 @@ async def change_user_role(user_id: uuid.UUID, role_update: UserRoleUpdate, pool
         raise HTTPException(status_code=400, detail="Users cannot change their own role")
 
     async with pool.acquire() as conn:
+        target_user = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+        if not target_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if current_user.get("org_id") and target_user["org_id"] != current_user["org_id"]:
+            raise HTTPException(status_code=403, detail="Not authorized to change this user's role")
+
         row = await conn.fetchrow(
             """
             UPDATE users
