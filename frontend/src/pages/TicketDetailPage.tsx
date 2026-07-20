@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import type { Ticket, TicketStatus, TicketPriority, TicketType } from '../types';
+import type { Ticket, User, TicketStatus, TicketPriority, TicketType } from '../types';
 import {
   STATUS_LABELS,
   PRIORITY_LABELS,
@@ -33,6 +33,8 @@ export default function TicketDetailPage() {
   const [status, setStatus] = useState<TicketStatus>('open');
   const [priority, setPriority] = useState<TicketPriority>('medium');
   const [type, setType] = useState<TicketType>('task');
+  const [assigneeId, setAssigneeId] = useState<string | null>(null);
+  const [orgUsers, setOrgUsers] = useState<User[]>([]);
   const [saving, setSaving] = useState(false);
 
   const loadTicket = useCallback(async () => {
@@ -45,6 +47,7 @@ export default function TicketDetailPage() {
       setStatus(t.status);
       setPriority(t.priority);
       setType(t.type);
+      setAssigneeId(t.assignee_id || null);
     } catch {
       navigate('/');
     } finally {
@@ -56,6 +59,12 @@ export default function TicketDetailPage() {
     loadTicket();
   }, [loadTicket]);
 
+  useEffect(() => {
+    if (editing && orgUsers.length === 0) {
+      api.getUsers().then(setOrgUsers).catch(() => {});
+    }
+  }, [editing, orgUsers.length]);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -65,6 +74,7 @@ export default function TicketDetailPage() {
         status,
         priority,
         type,
+        assignee_id: assigneeId,
       });
       setEditing(false);
       await loadTicket();
@@ -110,6 +120,7 @@ export default function TicketDetailPage() {
                   setStatus(ticket.status);
                   setPriority(ticket.priority);
                   setType(ticket.type);
+                  setAssigneeId(ticket.assignee_id || null);
                 }}
               >
                 Cancel
@@ -218,7 +229,27 @@ export default function TicketDetailPage() {
 
             <div className="detail-field">
               <label>Reporter</label>
-              <span>{ticket.reporter_id.slice(0, 8)}...</span>
+              <span>{ticket.reporter_name}</span>
+            </div>
+
+            <div className="detail-field">
+              <label>Assignee</label>
+              {editing ? (
+                <select
+                  value={assigneeId || ''}
+                  onChange={(e) => setAssigneeId(e.target.value || null)}
+                  className="form-input"
+                >
+                  <option value="">Unassigned</option>
+                  {orgUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.display_name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span>{ticket.assignee_name || 'Unassigned'}</span>
+              )}
             </div>
 
             <div className="detail-field">
