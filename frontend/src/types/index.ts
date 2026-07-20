@@ -3,11 +3,22 @@ export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
 export type TicketType = 'bug' | 'task' | 'story' | 'improvement';
 export type UserRole = 'admin' | 'member' | 'viewer';
 
+export interface Organization {
+  id: string;
+  name: string;
+  key: string;
+  invite_code: string;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: string;
   email: string;
   display_name: string;
   role: UserRole;
+  org_id: string | null;
   created_at: string;
   updated_at: string;
 }

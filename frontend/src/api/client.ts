@@ -61,8 +61,9 @@ export async function registerUser(data: {
   email: string;
   password: string;
   display_name: string;
+  role?: import('../types').UserRole;
 }) {
-  return request<unknown>('/users', {
+  return request<import('../types').User>('/users', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -166,4 +167,27 @@ export async function updateTicket(
 
 export async function deleteTicket(id: string) {
   return request<undefined>(`/tickets/${id}`, { method: 'DELETE' });
+}
+
+// Organizations
+export async function getMyOrganization() {
+  return request<import('../types').Organization>('/organizations/me');
+}
+
+export async function createOrganization(data: { name: string; key: string }) {
+  return request<import('../types').Organization>('/organizations', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function joinOrganization(inviteCode: string) {
+  return request<import('../types').Organization>('/organizations/join', {
+    method: 'POST',
+    body: JSON.stringify({ invite_code: inviteCode }),
+  });
+}
+
+export async function leaveOrganization() {
+  return request<undefined>('/organizations/leave', { method: 'DELETE' });
 }
