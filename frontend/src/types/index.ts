@@ -43,7 +43,9 @@ export interface Ticket {
   type: TicketType;
   project_id: string;
   reporter_id: string;
+  reporter_name: string;
   assignee_id: string | null;
+  assignee_name: string | null;
   due_date: string | null;
   created_at: string;
   updated_at: string;

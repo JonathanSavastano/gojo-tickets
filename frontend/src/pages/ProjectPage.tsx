@@ -66,10 +66,10 @@ export default function ProjectPage() {
   }, [id]);
 
   useEffect(() => {
-    if (showMembers && id) {
+    if ((showMembers || showCreateForm) && id) {
       loadMembers();
     }
-  }, [showMembers, id, loadMembers]);
+  }, [showMembers, showCreateForm, id, loadMembers]);
 
   const handleAddMember = async () => {
     if (!selectedUserId || !id) return;
@@ -150,6 +150,7 @@ export default function ProjectPage() {
           <TicketForm
             onSubmit={handleCreateTicket}
             onCancel={() => setShowCreateForm(false)}
+            users={allUsers}
           />
         </div>
       )}

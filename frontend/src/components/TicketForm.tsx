@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import type { TicketPriority, TicketType, TicketStatus } from '../types';
+import type { TicketPriority, TicketType, TicketStatus, User } from '../types';
 import { PRIORITY_LABELS, TYPE_LABELS, STATUS_LABELS } from '../types';
 
 interface TicketFormProps {
@@ -15,6 +15,7 @@ interface TicketFormProps {
   onCancel?: () => void;
   submitLabel?: string;
   showStatus?: boolean;
+  users?: User[];
 }
 
 export default function TicketForm({
@@ -23,6 +24,7 @@ export default function TicketForm({
   onCancel,
   submitLabel = 'Create Ticket',
   showStatus = false,
+  users = [],
 }: TicketFormProps) {
   const [title, setTitle] = useState(initial.title || '');
   const [description, setDescription] = useState(initial.description || '');
@@ -32,6 +34,9 @@ export default function TicketForm({
   const [type, setType] = useState<TicketType>(initial.type || 'task');
   const [status, setStatus] = useState<TicketStatus>(
     initial.status || 'open'
+  );
+  const [assigneeId, setAssigneeId] = useState<string | null>(
+    initial.assignee_id || null
   );
   const [submitting, setSubmitting] = useState(false);
 
@@ -46,7 +51,7 @@ export default function TicketForm({
         type,
       };
       if (showStatus) data.status = status;
-      if (initial.assignee_id !== undefined) data.assignee_id = initial.assignee_id;
+      if (assigneeId) data.assignee_id = assigneeId;
       await onSubmit(data);
     } finally {
       setSubmitting(false);
@@ -123,6 +128,25 @@ export default function TicketForm({
               {Object.entries(STATUS_LABELS).map(([val, label]) => (
                 <option key={val} value={val}>
                   {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {users.length > 0 && (
+          <div className="form-group">
+            <label htmlFor="assignee">Assignee</label>
+            <select
+              id="assignee"
+              value={assigneeId || ''}
+              onChange={(e) => setAssigneeId(e.target.value || null)}
+              className="form-input"
+            >
+              <option value="">Unassigned</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.display_name}
                 </option>
               ))}
             </select>

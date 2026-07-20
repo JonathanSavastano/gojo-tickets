@@ -59,8 +59,12 @@ async def get_tickets(pool=Depends(get_pool), current_user=Depends(get_current_u
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT t.* FROM tickets t
+            SELECT t.*, reporter.display_name AS reporter_name,
+                   assignee.display_name AS assignee_name
+            FROM tickets t
             JOIN projects p ON t.project_id = p.id
+            LEFT JOIN users reporter ON t.reporter_id = reporter.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
             WHERE p.org_id = $1
             """,
             current_user["org_id"],
@@ -74,8 +78,12 @@ async def get_ticket(ticket_id: uuid.UUID, pool=Depends(get_pool), current_user=
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT t.* FROM tickets t
+            SELECT t.*, reporter.display_name AS reporter_name,
+                   assignee.display_name AS assignee_name
+            FROM tickets t
             JOIN projects p ON t.project_id = p.id
+            LEFT JOIN users reporter ON t.reporter_id = reporter.id
+            LEFT JOIN users assignee ON t.assignee_id = assignee.id
             WHERE t.id = $1 AND p.org_id = $2
             """,
             ticket_id,
