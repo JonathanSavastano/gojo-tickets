@@ -74,6 +74,18 @@ export async function registerUser(data: {
   return res.json() as Promise<{ access_token: string; token_type: string }>;
 }
 
+export async function createUser(data: {
+  email: string;
+  password: string;
+  display_name: string;
+  role?: import('../types').UserRole;
+}) {
+  return request<import('../types').User>('/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function getMe() {
   return request<import('../types').User>('/users/me');
 }

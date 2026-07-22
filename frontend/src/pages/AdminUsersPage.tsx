@@ -47,7 +47,7 @@ export default function AdminUsersPage() {
     setError('');
     setCreating(true);
     try {
-      await api.registerUser({
+      await api.createUser({
         email,
         password,
         display_name: displayName,
