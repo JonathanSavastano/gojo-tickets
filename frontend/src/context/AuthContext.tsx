@@ -60,12 +60,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     displayName: string
   ) => {
-    await api.registerUser({
+    const { access_token } = await api.registerUser({
       email,
       password,
       display_name: displayName,
     });
-    await login(email, password);
+    localStorage.setItem('token', access_token);
+    const me = await api.getMe();
+    setUser(me);
   };
 
   const logout = () => {

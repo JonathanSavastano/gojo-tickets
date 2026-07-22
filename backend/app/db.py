@@ -12,7 +12,6 @@ async def create_pool():
         raise RuntimeError("DATABASE_URL environment variable is not set")
     if "?" not in dsn:
         dsn += "?sslmode=require"
-    print(f"DB host: {dsn.split('@')[1].split('?')[0] if '@' in dsn else 'unknown'}")
     return await asyncpg.create_pool(dsn)
 
 # receive incoming request, reach into app.state, and return the db pool for use in routes.

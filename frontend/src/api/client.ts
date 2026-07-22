@@ -61,12 +61,17 @@ export async function registerUser(data: {
   email: string;
   password: string;
   display_name: string;
-  role?: import('../types').UserRole;
 }) {
-  return request<import('../types').User>('/users', {
+  const res = await fetch(`${API_BASE}/auth/register`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Registration failed' }));
+    throw new Error(error.detail || 'Registration failed');
+  }
+  return res.json() as Promise<{ access_token: string; token_type: string }>;
 }
 
 export async function getMe() {
