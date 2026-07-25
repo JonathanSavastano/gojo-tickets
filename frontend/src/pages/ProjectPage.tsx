@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -110,18 +110,33 @@ export default function ProjectPage() {
     await loadData();
   };
 
+  const dragCounters = useRef<Map<TicketStatus, number>>(new Map());
+
+  const handleDragEnter = (e: React.DragEvent, status: TicketStatus) => {
+    e.preventDefault();
+    const count = (dragCounters.current.get(status) || 0) + 1;
+    dragCounters.current.set(status, count);
+    if (count === 1) {
+      (e.currentTarget as HTMLElement).classList.add('board-column-drag-over');
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, status: TicketStatus) => {
+    const count = (dragCounters.current.get(status) || 1) - 1;
+    dragCounters.current.set(status, count);
+    if (count === 0) {
+      (e.currentTarget as HTMLElement).classList.remove('board-column-drag-over');
+    }
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    (e.currentTarget as HTMLElement).classList.add('board-column-drag-over');
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    (e.currentTarget as HTMLElement).classList.remove('board-column-drag-over');
   };
 
   const handleDrop = (e: React.DragEvent, status: TicketStatus) => {
     e.preventDefault();
+    dragCounters.current.set(status, 0);
     (e.currentTarget as HTMLElement).classList.remove('board-column-drag-over');
     const ticketId = e.dataTransfer.getData('application/ticket-id');
     const fromStatus = e.dataTransfer.getData('application/ticket-status');
@@ -237,19 +252,21 @@ export default function ProjectPage() {
           {BOARD_COLUMNS.map((status) => {
             const columnTickets = tickets.filter((t) => t.status === status);
             return (
-              <div key={status} className="board-column">
+              <div
+                key={status}
+                className="board-column"
+                onDragEnter={(e) => handleDragEnter(e, status)}
+                onDragOver={handleDragOver}
+                onDragLeave={(e) => handleDragLeave(e, status)}
+                onDrop={(e) => handleDrop(e, status)}
+              >
                 <div className="board-column-header">
                   <h3>{STATUS_LABELS[status]}</h3>
                   <span className="board-column-count">
                     {columnTickets.length}
                   </span>
                 </div>
-                <div
-                  className="board-column-body"
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, status)}
-                >
+                <div className="board-column-body">
                   {columnTickets.length === 0 ? (
                     <p className="text-muted text-sm">No tickets</p>
                   ) : (
