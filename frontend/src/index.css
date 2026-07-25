@@ -494,6 +494,16 @@ select.form-input {
   flex-direction: column;
   gap: 8px;
   min-height: 100px;
+  transition: background 0.15s;
+}
+
+.board-column-drag-over {
+  background: rgba(124, 92, 252, 0.08);
+  border-radius: 0 0 10px 10px;
+}
+
+.dragging {
+  opacity: 0.4;
 }
 
 .board-ticket-wrapper {
