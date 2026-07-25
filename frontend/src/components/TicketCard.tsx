@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { Ticket, TicketStatus } from '../types';
+import type { Ticket } from '../types';
 import { STATUS_LABELS, PRIORITY_LABELS, TYPE_LABELS } from '../types';
 
 const PRIORITY_COLORS: Record<string, string> = {
