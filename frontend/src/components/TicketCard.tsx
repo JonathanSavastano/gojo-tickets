@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { Ticket } from '../types';
+import type { Ticket, TicketStatus } from '../types';
 import { STATUS_LABELS, PRIORITY_LABELS, TYPE_LABELS } from '../types';
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -19,11 +19,29 @@ const STATUS_COLORS: Record<string, string> = {
 
 interface TicketCardProps {
   ticket: Ticket;
+  draggable?: boolean;
 }
 
-export default function TicketCard({ ticket }: TicketCardProps) {
+export default function TicketCard({ ticket, draggable }: TicketCardProps) {
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('application/ticket-id', ticket.id);
+    e.dataTransfer.setData('application/ticket-status', ticket.status);
+    e.dataTransfer.effectAllowed = 'move';
+    (e.target as HTMLElement).classList.add('dragging');
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    (e.target as HTMLElement).classList.remove('dragging');
+  };
+
   return (
-    <Link to={`/tickets/${ticket.id}`} className="ticket-card">
+    <Link
+      to={`/tickets/${ticket.id}`}
+      className="ticket-card"
+      draggable={draggable}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="ticket-card-header">
         <span className="ticket-key">{ticket.key}</span>
         <span

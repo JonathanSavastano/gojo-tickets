@@ -110,6 +110,26 @@ export default function ProjectPage() {
     await loadData();
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    (e.currentTarget as HTMLElement).classList.add('board-column-drag-over');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    (e.currentTarget as HTMLElement).classList.remove('board-column-drag-over');
+  };
+
+  const handleDrop = (e: React.DragEvent, status: TicketStatus) => {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).classList.remove('board-column-drag-over');
+    const ticketId = e.dataTransfer.getData('application/ticket-id');
+    const fromStatus = e.dataTransfer.getData('application/ticket-status');
+    if (ticketId && fromStatus !== status) {
+      handleStatusChange(ticketId, status);
+    }
+  };
+
   if (loading) return <p className="text-muted">Loading...</p>;
   if (!project) return <p className="text-muted">Project not found.</p>;
 
@@ -224,29 +244,18 @@ export default function ProjectPage() {
                     {columnTickets.length}
                   </span>
                 </div>
-                <div className="board-column-body">
+                <div
+                  className="board-column-body"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, status)}
+                >
                   {columnTickets.length === 0 ? (
                     <p className="text-muted text-sm">No tickets</p>
                   ) : (
                     columnTickets.map((ticket) => (
                       <div key={ticket.id} className="board-ticket-wrapper">
-                        <TicketCard ticket={ticket} />
-                        <select
-                          className="status-select"
-                          value={ticket.status}
-                          onChange={(e) =>
-                            handleStatusChange(
-                              ticket.id,
-                              e.target.value as TicketStatus
-                            )
-                          }
-                        >
-                          {BOARD_COLUMNS.map((s) => (
-                            <option key={s} value={s}>
-                              {STATUS_LABELS[s]}
-                            </option>
-                          ))}
-                        </select>
+                        <TicketCard ticket={ticket} draggable />
                       </div>
                     ))
                   )}
