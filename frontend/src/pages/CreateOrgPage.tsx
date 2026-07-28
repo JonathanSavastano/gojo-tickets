@@ -70,7 +70,9 @@ export default function CreateOrgPage() {
           </button>
         </form>
         <p className="auth-footer">
-          Have an invite code? <Link to="/org/join">Join an organization</Link>
+          <Link to="/org/join" className="btn btn-secondary btn-block">
+            Join an existing organization with an invite code
+          </Link>
         </p>
       </div>
     </div>
