@@ -32,10 +32,19 @@ export default function Navbar() {
       </div>
       {user && (
         <div className="navbar-right">
-          {user.org_id && (
+          {user.org_id ? (
             <Link to="/admin/users" className="navbar-link">
               Users
             </Link>
+          ) : (
+            <>
+              <Link to="/org/join" className="navbar-link">
+                Join Organization
+              </Link>
+              <Link to="/org/create" className="navbar-link">
+                Create Organization
+              </Link>
+            </>
           )}
           <span className="navbar-user">{user.display_name}</span>
           <button onClick={handleLogout} className="btn btn-sm">
