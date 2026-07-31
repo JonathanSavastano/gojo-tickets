@@ -135,6 +135,8 @@ async def update_ticket(ticket_id: uuid.UUID, ticket: TicketUpdate, pool=Depends
 # DELETE /tickets/done - Delete all done tickets in a project
 @router.delete("/tickets/done")
 async def delete_done_tickets(project_id: uuid.UUID, pool=Depends(get_pool), current_user=Depends(get_current_user)):
+    if not current_user.get("org_id"):
+        return {"deleted": 0}
     async with pool.acquire() as conn:
         project = await conn.fetchrow(
             "SELECT id FROM projects WHERE id = $1 AND org_id = $2",
@@ -150,7 +152,12 @@ async def delete_done_tickets(project_id: uuid.UUID, pool=Depends(get_pool), cur
                 raise HTTPException(status_code=403, detail="Not authorized to delete this ticket")
 
         deleted = await conn.fetchval(
-            "DELETE FROM tickets WHERE project_id = $1 AND status = 'done' RETURNING count(*)",
+            """
+            WITH deleted AS (
+                DELETE FROM tickets WHERE project_id = $1 AND status = 'done' RETURNING id
+            )
+            SELECT count(*) FROM deleted
+            """,
             project_id,
         )
         return {"deleted": deleted}
