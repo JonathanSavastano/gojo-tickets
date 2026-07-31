@@ -102,6 +102,16 @@ export default function ProjectPage() {
     await loadData();
   };
 
+  const handleDeleteDone = async () => {
+    if (!confirm('Delete all tickets in the Done column?')) return;
+    try {
+      await api.deleteDoneTickets(id!);
+      await loadData();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete done tickets');
+    }
+  };
+
   const handleStatusChange = async (
     ticketId: string,
     newStatus: TicketStatus
@@ -265,6 +275,15 @@ export default function ProjectPage() {
                   <span className="board-column-count">
                     {columnTickets.length}
                   </span>
+                  {status === 'done' && columnTickets.length > 0 && (
+                    <button
+                      className="btn btn-danger btn-sm"
+                      title="Delete all done tickets"
+                      onClick={handleDeleteDone}
+                    >
+                      Delete Done
+                    </button>
+                  )}
                 </div>
                 <div className="board-column-body">
                   {columnTickets.length === 0 ? (

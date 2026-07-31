@@ -186,6 +186,13 @@ export async function deleteTicket(id: string) {
   return request<undefined>(`/tickets/${id}`, { method: 'DELETE' });
 }
 
+export async function deleteDoneTickets(projectId: string) {
+  return request<{ deleted: number }>(
+    `/tickets/done?project_id=${projectId}`,
+    { method: 'DELETE' }
+  );
+}
+
 // Organizations
 export async function getMyOrganization() {
   return request<import('../types').Organization>('/organizations/me');
