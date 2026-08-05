@@ -8,6 +8,7 @@ import TicketCard from '../components/TicketCard';
 import TicketForm from '../components/TicketForm';
 
 type ViewMode = 'board' | 'list';
+type SortOrder = 'none' | 'asc' | 'desc';
 
 const BOARD_COLUMNS: TicketStatus[] = [
   'open',
@@ -16,6 +17,14 @@ const BOARD_COLUMNS: TicketStatus[] = [
   'done',
   'cancelled',
 ];
+
+const DEFAULT_SORT: Record<TicketStatus, SortOrder> = {
+  open: 'none',
+  in_progress: 'none',
+  in_review: 'none',
+  done: 'none',
+  cancelled: 'none',
+};
 
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +39,9 @@ export default function ProjectPage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [showMembers, setShowMembers] = useState(false);
+  const [sortOrders, setSortOrders] = useState<Record<TicketStatus, SortOrder>>(
+    DEFAULT_SORT
+  );
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -118,6 +130,14 @@ export default function ProjectPage() {
   ) => {
     await api.updateTicket(ticketId, { status: newStatus });
     await loadData();
+  };
+
+  const cycleSort = (status: TicketStatus) => {
+    setSortOrders((prev) => {
+      const next =
+        prev[status] === 'none' ? 'desc' : prev[status] === 'desc' ? 'asc' : 'none';
+      return { ...prev, [status]: next };
+    });
   };
 
   const dragCounters = useRef<Map<TicketStatus, number>>(new Map());
@@ -260,7 +280,25 @@ export default function ProjectPage() {
       {view === 'board' ? (
         <div className="board">
           {BOARD_COLUMNS.map((status) => {
-            const columnTickets = tickets.filter((t) => t.status === status);
+            const sortOrder = sortOrders[status];
+            const columnTickets = tickets
+              .filter((t) => t.status === status)
+              .slice()
+              .sort((a, b) => {
+                if (sortOrder === 'desc') {
+                  return b.created_at.localeCompare(a.created_at);
+                }
+                if (sortOrder === 'asc') {
+                  return a.created_at.localeCompare(b.created_at);
+                }
+                return 0;
+              });
+            const sortTitle =
+              sortOrder === 'none'
+                ? 'Sort by newest first'
+                : sortOrder === 'desc'
+                  ? 'Sorted newest first — click for oldest first'
+                  : 'Sorted oldest first — click for default order';
             return (
               <div
                 key={status}
@@ -271,7 +309,16 @@ export default function ProjectPage() {
                 onDrop={(e) => handleDrop(e, status)}
               >
                 <div className="board-column-header">
-                  <h3>{STATUS_LABELS[status]}</h3>
+                  <div className="board-column-title">
+                    <h3>{STATUS_LABELS[status]}</h3>
+                    <button
+                      className={`sort-btn ${sortOrder === 'none' ? '' : 'sort-active'}`}
+                      title={sortTitle}
+                      onClick={() => cycleSort(status)}
+                    >
+                      {sortOrder === 'desc' ? '▲' : '▼'}
+                    </button>
+                  </div>
                   <span className="board-column-count">
                     {columnTickets.length}
                   </span>
